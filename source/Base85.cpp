@@ -1,8 +1,8 @@
 #include <Base85.hpp>
 
-#if defined(__x86_64__) || defined(_M_X64)
-#include "Base85-x86.hpp"
-#else
+//#if defined(__x86_64__) || defined(_M_X64)
+//#include "Base85-x86.hpp"
+//#else
 // Generic Implementation
 void Base85::Encode(
 	const std::uint8_t Input[], std::uint64_t Output[], std::size_t Length
@@ -64,4 +64,4 @@ std::size_t Base85::Filter(std::uint8_t Bytes[], std::size_t Length)
 	}
 	return End;
 }
-#endif
+//#endif
