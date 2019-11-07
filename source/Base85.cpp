@@ -10,7 +10,7 @@ void Base85::Encode(
 	std::uint8_t Output[]
 )
 {
-	for( std::size_t i = 0; i < Length; ++i )
+	for( std::size_t i = 0; i < Length / 4; ++i )
 	{
 		std::uint32_t InTuple = __builtin_bswap32(
 			*reinterpret_cast<const std::uint32_t*>(&Input[i * 4])

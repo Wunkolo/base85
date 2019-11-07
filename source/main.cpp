@@ -10,10 +10,10 @@
 
 #include <Base85.hpp>
 
-// Virtual page size of the current system
-const static std::size_t ByteBuffSize = sysconf(_SC_PAGE_SIZE);
+// Virtual page size of the current system, rounded to nearest multiple of 4
+const static std::size_t DecodedBuffSize = (sysconf(_SC_PAGE_SIZE) / 4) * 4;
 // Each 4 bytes of input matches up to 5 bytes of output
-const static std::size_t AsciiBuffSize = (ByteBuffSize / 4) * 5;
+const static std::size_t EncodedBuffSize = (DecodedBuffSize / 4) * 5;
 
 struct Settings
 {
@@ -59,23 +59,30 @@ bool Encode( const Settings& Settings )
 	// Every 4 bytes input will map to 5 bytes of output
 	std::uint8_t* InputBuffer = static_cast<std::uint8_t*>(
 		mmap(
-			0, ByteBuffSize,
+			0, DecodedBuffSize,
 			PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0
 		)
 	);
 	std::uint8_t* OutputBuffer = static_cast<std::uint8_t*>(
 		mmap(
-			0, AsciiBuffSize,
+			0, EncodedBuffSize,
 			PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0
 		)
 	);
 	std::size_t CurrentColumn = 0;
 	std::size_t CurRead = 0;
-	while( (CurRead = std::fread(InputBuffer, 1, ByteBuffSize, Settings.InputFile)) )
+	while( (CurRead = std::fread(InputBuffer, 1, DecodedBuffSize, Settings.InputFile)) )
 	{
+		const std::size_t Padding = 4u - CurRead % 4u;
+		// Add padding 0x00 bytes
+		for(std::size_t i = 0; i < Padding; ++i) InputBuffer[CurRead + i] = 0u;
+		// Round up to nearest multiple of 4
+		CurRead += Padding;
 		Base85::Encode(InputBuffer, CurRead, OutputBuffer);
 		CurrentColumn = WrapWrite(
-			reinterpret_cast<const char*>(OutputBuffer), (CurRead / 4) * 5,
+			reinterpret_cast<const char*>(OutputBuffer),
+			// Remove padding byte values from output
+			(CurRead / 4) * 5 - Padding,
 			Settings.Wrap, Settings.OutputFile, CurrentColumn
 		);
 	}
@@ -83,8 +90,8 @@ bool Encode( const Settings& Settings )
 	{
 		std::fputs("Error while reading input file",stderr);
 	}
-	munmap(InputBuffer,  ByteBuffSize);
-	munmap(OutputBuffer, AsciiBuffSize);
+	munmap(InputBuffer,  DecodedBuffSize);
+	munmap(OutputBuffer, EncodedBuffSize);
 	return EXIT_SUCCESS;
 }
 
@@ -93,25 +100,25 @@ bool Decode( const Settings& Settings )
 	// Every 5 bytes of input will map to 4 byte of output
 	std::uint8_t* InputBuffer = static_cast<std::uint8_t*>(
 		mmap(
-			0, AsciiBuffSize,
+			0, EncodedBuffSize,
 			PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0
 		)
 	);
 	std::uint8_t* OutputBuffer = static_cast<std::uint8_t*>(
 		mmap(
-			0, ByteBuffSize,
+			0, DecodedBuffSize,
 			PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0
 		)
 	);
 
-	std::size_t ToRead = AsciiBuffSize;
+	std::size_t ToRead = EncodedBuffSize;
 	// Number of bytes available for actual processing
 	std::size_t CurRead = 0;
 	// Process paged-sized batches of input in an attempt to have bulk-amounts of
 	// conversions going on between calls to `read`
 	while(
 		(CurRead = std::fread(
-			reinterpret_cast<std::uint8_t*>(InputBuffer) + (AsciiBuffSize - ToRead),
+			reinterpret_cast<std::uint8_t*>(InputBuffer) + (EncodedBuffSize - ToRead),
 			1, ToRead, Settings.InputFile
 		))
 	)
@@ -120,21 +127,21 @@ bool Decode( const Settings& Settings )
 		if( Settings.IgnoreInvalid )
 		{
 			CurRead = Base85::Filter(
-				reinterpret_cast<std::uint8_t*>(InputBuffer) + (AsciiBuffSize - ToRead),
+				reinterpret_cast<std::uint8_t*>(InputBuffer) + (EncodedBuffSize - ToRead),
 				CurRead
 			);
 		}
 		// Process any new groups of 5 ascii-bytes
 		Base85::Decode(
-			InputBuffer + (AsciiBuffSize - ToRead) / 5,
+			InputBuffer + (EncodedBuffSize - ToRead) / 5,
 			CurRead / 5,
 			OutputBuffer
 		);
 		if( std::fwrite(OutputBuffer, 1, (CurRead / 5) * 4, Settings.OutputFile) != (CurRead / 5) * 4 )
 		{
 			std::fputs("Error writing to output file", stderr);
-			munmap(InputBuffer, AsciiBuffSize);
-			munmap(OutputBuffer, ByteBuffSize);
+			munmap(InputBuffer, EncodedBuffSize);
+			munmap(OutputBuffer, DecodedBuffSize);
 			return EXIT_FAILURE;
 		}
 
@@ -142,11 +149,11 @@ bool Decode( const Settings& Settings )
 		ToRead -= CurRead; 
 		if( ToRead == 0 )
 		{
-			ToRead = AsciiBuffSize;
+			ToRead = EncodedBuffSize;
 		}
 	}
-	munmap(InputBuffer, AsciiBuffSize);
-	munmap(OutputBuffer, ByteBuffSize);
+	munmap(InputBuffer, EncodedBuffSize);
+	munmap(OutputBuffer, DecodedBuffSize);
 	if( std::ferror(Settings.InputFile) )
 	{
 		std::fputs("Error while reading input file",stderr);
