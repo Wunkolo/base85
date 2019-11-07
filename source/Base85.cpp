@@ -5,51 +5,45 @@
 //#else
 // Generic Implementation
 void Base85::Encode(
-	const std::uint8_t Input[], std::uint64_t Output[], std::size_t Length
+	const std::uint8_t Input[],
+	std::size_t Length,
+	std::uint8_t Output[]
 )
 {
-	// Least significant bit in an 8-bit integer
-	constexpr std::uint64_t LSB8       = 0x0101010101010101UL;
-	// Each byte has a unique bit set
-	constexpr std::uint64_t UniqueBit  = 0x0102040810204080UL;
-	// Shifts unique bits to the left, using the carry of binary addition
-	constexpr std::uint64_t CarryShift = 0x7F7E7C7870604000UL;
-	// Most significant bit in an 8-bit integer
-	constexpr std::uint64_t MSB8       = LSB8 << 7u;
-	// Constant bits for ascii '0' and '1'
-	constexpr std::uint64_t BinAsciiBasis = LSB8 * '0';
 	for( std::size_t i = 0; i < Length; ++i )
 	{
-		Output[i] = ((((((
-			static_cast<std::uint64_t>(Input[i])
-			* LSB8			) // "broadcast" low byte to all 8 bytes.
-			& UniqueBit		) // Mask each byte to have 1 unique bit.
-			+ CarryShift	) // Shift this bit to the last bit of each
-							  // byte using the carry of binary addition.
-			& MSB8			) // Isolate these last bits of each byte.
-			>> 7			) // Shift it back to the low bit of each byte.
-			| BinAsciiBasis	  // Turn it into ascii '0' and '1'
+		std::uint32_t InTuple = __builtin_bswap32(
+			*reinterpret_cast<const std::uint32_t*>(&Input[i * 4])
 		);
+		for( std::size_t j = 0; j < 5; ++j )
+		{
+			Output[i * 5 + (4u - j)] = InTuple % 85 + '!';
+			InTuple /= 85;
+		}
 	}
 }
 
 void Base85::Decode(
-	const std::uint64_t Input[], std::uint8_t Output[], std::size_t Length
+	const std::uint8_t Input[],
+	std::size_t Length,
+	std::uint8_t Output[]
 )
 {
-	for( std::size_t i = 0; i < Length; ++i )
+	for( std::size_t i = 0; i < Length; i += 5 )
 	{
-		std::uint8_t Binary = 0;
-		std::uint64_t Mask = 0x0101010101010101UL;
-		for( std::uint64_t CurBit = 1UL; Mask != 0; CurBit <<= 1 )
+		std::uint32_t& OutTuple = *reinterpret_cast<std::uint32_t*>(&Output[(i / 5) * 4]);
+		OutTuple = 0;
+		const std::uint32_t Pow85[5] = {
+			52200625ul,
+			  614125ul,
+			    7225ul,
+			      85ul,
+			       1ul
+		};
+		for( std::size_t j = 0; j < 5; ++j )
 		{
-			if( __builtin_bswap64(Input[i]) & Mask & -Mask )
-			{
-				Binary |= CurBit;
-			}
-			Mask &= (Mask - 1UL);
+			OutTuple += (Input[i * 5 + j] - '!') * Pow85[j];
 		}
-		Output[i] = Binary;
 	}
 }
 

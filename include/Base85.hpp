@@ -6,11 +6,15 @@ namespace Base85
 {
 
 void Encode(
-	const std::uint8_t Input[], std::uint64_t Output[], std::size_t Length
+	const std::uint8_t Input[],
+	std::size_t Length,
+	std::uint8_t Output[]
 );
 
 void Decode(
-	const std::uint64_t Input[], std::uint8_t Output[], std::size_t Length
+	const std::uint8_t Input[],
+	std::size_t Length,
+	std::uint8_t Output[]
 );
 
 // Filters a given array of bytes so that all `0` and `1` bytes are filtered

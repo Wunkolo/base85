@@ -63,7 +63,7 @@ bool Encode( const Settings& Settings )
 			PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0
 		)
 	);
-	std::uint64_t* OutputBuffer = static_cast<std::uint64_t*>(
+	std::uint8_t* OutputBuffer = static_cast<std::uint8_t*>(
 		mmap(
 			0, AsciiBuffSize,
 			PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0
@@ -73,7 +73,7 @@ bool Encode( const Settings& Settings )
 	std::size_t CurRead = 0;
 	while( (CurRead = std::fread(InputBuffer, 1, ByteBuffSize, Settings.InputFile)) )
 	{
-		Base85::Encode(InputBuffer, OutputBuffer, CurRead);
+		Base85::Encode(InputBuffer, CurRead, OutputBuffer);
 		CurrentColumn = WrapWrite(
 			reinterpret_cast<const char*>(OutputBuffer), (CurRead / 4) * 5,
 			Settings.Wrap, Settings.OutputFile, CurrentColumn
@@ -91,7 +91,7 @@ bool Encode( const Settings& Settings )
 bool Decode( const Settings& Settings )
 {
 	// Every 5 bytes of input will map to 4 byte of output
-	std::uint64_t* InputBuffer = static_cast<std::uint64_t*>(
+	std::uint8_t* InputBuffer = static_cast<std::uint8_t*>(
 		mmap(
 			0, AsciiBuffSize,
 			PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0
@@ -127,7 +127,8 @@ bool Decode( const Settings& Settings )
 		// Process any new groups of 5 ascii-bytes
 		Base85::Decode(
 			InputBuffer + (AsciiBuffSize - ToRead) / 5,
-			OutputBuffer, CurRead / 5
+			CurRead / 5,
+			OutputBuffer
 		);
 		if( std::fwrite(OutputBuffer, 1, (CurRead / 5) * 4, Settings.OutputFile) != (CurRead / 5) * 4 )
 		{
