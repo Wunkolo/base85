@@ -129,7 +129,7 @@ bool Decode( const Settings& Settings )
 			InputBuffer + (AsciiBuffSize - ToRead) / 5,
 			OutputBuffer, CurRead / 5
 		);
-		if( std::fwrite(OutputBuffer, 1, CurRead / 5, Settings.OutputFile) != CurRead / 5 )
+		if( std::fwrite(OutputBuffer, 1, (CurRead / 5) * 4, Settings.OutputFile) != (CurRead / 5) * 4 )
 		{
 			std::fputs("Error writing to output file", stderr);
 			munmap(InputBuffer, AsciiBuffSize);
