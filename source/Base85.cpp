@@ -54,7 +54,7 @@ std::size_t Base85::Filter(std::uint8_t Bytes[], std::size_t Length)
 	for( std::size_t i = 0; i < Length; ++i )
 	{
 		const std::uint8_t CurByte = Bytes[i];
-		if( (CurByte & 0b11111110) != 0x30 ) continue;
+		if( CurByte < '!' || CurByte > 'u' ) continue;
 		Bytes[End++] = CurByte;
 	}
 	return End;
