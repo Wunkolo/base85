@@ -29,10 +29,8 @@ void Base85::Decode(
 	std::uint8_t Output[]
 )
 {
-	for( std::size_t i = 0; i < Length; i += 5 )
+	for( std::size_t i = 0; i < Length / 5; ++i )
 	{
-		std::uint32_t& OutTuple = *reinterpret_cast<std::uint32_t*>(&Output[(i / 5) * 4]);
-		OutTuple = 0;
 		const std::uint32_t Pow85[5] = {
 			52200625ul,
 			  614125ul,
@@ -40,10 +38,13 @@ void Base85::Decode(
 			      85ul,
 			       1ul
 		};
+		std::uint32_t& OutTuple = *reinterpret_cast<std::uint32_t*>(&Output[i * 4]);
+		OutTuple = 0;
 		for( std::size_t j = 0; j < 5; ++j )
 		{
 			OutTuple += (Input[i * 5 + j] - '!') * Pow85[j];
 		}
+		OutTuple = __builtin_bswap32(OutTuple);
 	}
 }
 

@@ -123,6 +123,11 @@ bool Decode( const Settings& Settings )
 		))
 	)
 	{
+		const std::size_t Padding = 5u - CurRead % 5u;
+		// Add padding 0x00 bytes
+		for(std::size_t i = 0; i < Padding; ++i) InputBuffer[CurRead + i] = 'u';
+		// Round up to nearest multiple of 4
+		CurRead += Padding;
 		// Filter input of all garbage bytes
 		if( Settings.IgnoreInvalid )
 		{
@@ -134,10 +139,13 @@ bool Decode( const Settings& Settings )
 		// Process any new groups of 5 ascii-bytes
 		Base85::Decode(
 			InputBuffer + (EncodedBuffSize - ToRead) / 5,
-			CurRead / 5,
+			CurRead,
 			OutputBuffer
 		);
-		if( std::fwrite(OutputBuffer, 1, (CurRead / 5) * 4, Settings.OutputFile) != (CurRead / 5) * 4 )
+		if(
+			std::fwrite(OutputBuffer, 1, (CurRead / 5) * 4 - Padding, Settings.OutputFile)
+			!= (CurRead / 5) * 4
+		)
 		{
 			std::fputs("Error writing to output file", stderr);
 			munmap(InputBuffer, EncodedBuffSize);
