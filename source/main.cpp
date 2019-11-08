@@ -73,7 +73,7 @@ bool Encode( const Settings& Settings )
 	std::size_t CurRead = 0;
 	while( (CurRead = std::fread(InputBuffer, 1, DecodedBuffSize, Settings.InputFile)) )
 	{
-		const std::size_t Padding = 4u - CurRead % 4u;
+		const std::size_t Padding = (4u - CurRead % 4u) % 4u;
 		// Add padding 0x00 bytes
 		for(std::size_t i = 0; i < Padding; ++i) InputBuffer[CurRead + i] = 0u;
 		// Round up to nearest multiple of 4
@@ -131,7 +131,7 @@ bool Decode( const Settings& Settings )
 				CurRead
 			);
 		}
-		const std::size_t Padding = 5u - CurRead % 5u;
+		const std::size_t Padding = (5u - CurRead % 5u) % 5u;
 		// Add padding 0x00 bytes
 		for(std::size_t i = 0; i < Padding; ++i) InputBuffer[CurRead + i] = 'u';
 		// Round up to nearest multiple of 4
