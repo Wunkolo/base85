@@ -176,9 +176,9 @@ const char* Usage =
 "       base85 --decode [Options]... [File]\n"
 "Options:\n"
 "  -h, --help            Display this help/usage information\n"
-"  -d, --decode          Decodes incoming binary ascii into bytes\n"
+"  -d, --decode          Decodes incoming base85 into binary bytes\n"
 "  -i, --ignore-garbage  When decoding, ignores non-base85 characters\n"
-"  -w, --wrap=Columns    Wrap encoded binary output within columns\n"
+"  -w, --wrap=Columns    Wrap encoded base85 output within columns\n"
 "                        Default is `76`. `0` Disables linewrapping\n";
 
 const static struct option CommandOptions[5] = {
