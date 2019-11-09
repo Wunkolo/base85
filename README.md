@@ -1,5 +1,7 @@
 # base85 [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
+An implementation of base85 ascii encoding modeled after the gnu coreutils.
+
 ```
 base85 - Wunkolo <wunkolo@gmail.com>
 Usage: base85 [Options]... [File]
