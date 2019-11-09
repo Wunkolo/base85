@@ -8,9 +8,9 @@ Usage: base85 [Options]... [File]
        base85 --decode [Options]... [File]
 Options:
   -h, --help            Display this help/usage information
-  -d, --decode          Decodes incoming binary ascii into bytes
+  -d, --decode          Decodes incoming base85 into binary bytes
   -i, --ignore-garbage  When decoding, ignores non-base85 characters
-  -w, --wrap=Columns    Wrap encoded binary output within columns
+  -w, --wrap=Columns    Wrap encoded base85 output within columns
                         Default is `76`. `0` Disables linewrapping
 ```
 ---
