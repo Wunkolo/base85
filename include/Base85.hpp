@@ -6,14 +6,12 @@ namespace Base85
 {
 
 void Encode(
-	const std::uint8_t Input[],
-	std::size_t Length,
+	const std::uint8_t Input[], std::size_t Length,
 	std::uint8_t Output[]
 );
 
 void Decode(
-	const std::uint8_t Input[],
-	std::size_t Length,
+	const std::uint8_t Input[], std::size_t Length,
 	std::uint8_t Output[]
 );
 

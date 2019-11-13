@@ -1,13 +1,12 @@
 #include <Base85.hpp>
+#include <algorithm>
 
 //#if defined(__x86_64__) || defined(_M_X64)
 //#include "Base85-x86.hpp"
 //#else
 // Generic Implementation
 void Base85::Encode(
-	const std::uint8_t Input[],
-	std::size_t Length,
-	std::uint8_t Output[]
+	const std::uint8_t Input[], std::size_t Length, std::uint8_t Output[]
 )
 {
 	for( std::size_t i = 0; i < Length / 4; ++i )
@@ -24,19 +23,13 @@ void Base85::Encode(
 }
 
 void Base85::Decode(
-	const std::uint8_t Input[],
-	std::size_t Length,
-	std::uint8_t Output[]
+	const std::uint8_t Input[], std::size_t Length, std::uint8_t Output[]
 )
 {
 	for( std::size_t i = 0; i < Length / 5; ++i )
 	{
 		const std::uint32_t Pow85[5] = {
-			52200625ul,
-			  614125ul,
-			    7225ul,
-			      85ul,
-			       1ul
+			52200625ul, 614125ul, 7225ul, 85ul, 1ul
 		};
 		std::uint32_t& OutTuple = *reinterpret_cast<std::uint32_t*>(&Output[i * 4]);
 		OutTuple = 0;
@@ -50,13 +43,12 @@ void Base85::Decode(
 
 std::size_t Base85::Filter(std::uint8_t Bytes[], std::size_t Length)
 {
-	std::size_t End = 0;
-	for( std::size_t i = 0; i < Length; ++i )
-	{
-		const std::uint8_t CurByte = Bytes[i];
-		if( CurByte < '!' || CurByte > 'u' ) continue;
-		Bytes[End++] = CurByte;
-	}
-	return End;
+	return  std::remove_if(
+		Bytes, Bytes + Length,
+		[](const std::uint8_t& CurByte) -> bool
+		{
+			return ( CurByte < '!' || CurByte > 'u' );
+		}
+	) - Bytes;
 }
 //#endif
