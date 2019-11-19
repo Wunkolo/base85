@@ -233,6 +233,7 @@ int main( int argc, char* argv[] )
 					stderr, "Error opening input file: %s\n", argv[optind]
 				);
 			}
+			return EXIT_FAILURE;
 		}
 	}
 	return (CurSettings.Decode ? Decode:Encode)(CurSettings);
