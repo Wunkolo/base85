@@ -14,3 +14,14 @@ Options:
                         Default is `76`. `0` Disables linewrapping
 ```
 ---
+
+# Todo:
+
+- [ ] Implement all base85 variant options
+  - [ ] bota
+  - [ ] Adobe
+  - [ ] Ascii85
+  - [ ] RFC-1924
+- [ ] Add SIMD-vectorizations for each variant
+  - [ ] x86(`SSE` to `AVX512`)
+  - [ ] ARM(`NEON`)
