@@ -13,6 +13,16 @@ Options:
   -w, --wrap=Columns    Wrap encoded base85 output within columns
                         Default is `76`. `0` Disables linewrapping
 ```
+
+```
+% inxi -C
+CPU:       Topology: Dual Core model: Intel Core i3-6100 bits: 64 type: MT MCP L2 cache: 3072 KiB 
+           Speed: 3700 MHz min/max: 800/3700 MHz Core speeds (MHz): 1: 3700 2: 3700 3: 3700 4: 3700 
+
+% cat /dev/zero | ./base85 --wrap=0 | pv > /dev/null
+4.38GiB 0:00:10 [ 455MiB/s]
+```
+
 ---
 
 # Todo:
