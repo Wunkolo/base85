@@ -25,19 +25,19 @@ struct Settings
 };
 
 std::size_t WrapWrite(
-	const char* Buffer, std::size_t Length, std::size_t WrapWidth,
+	std::span<const std::uint8_t> Buffer, std::size_t WrapWidth,
 	std::FILE* OutputFile, std::size_t CurrentColumn = 0
 )
 {
 	if( WrapWidth == 0 )
 	{
-		return std::fwrite(Buffer, 1, Length, OutputFile);
+		return std::fwrite(Buffer.data(), 1, Buffer.size(), OutputFile);
 	}
-	for( std::size_t Written = 0; Written < Length; )
+	for( std::size_t Written = 0; Written < Buffer.size(); )
 	{
 		const std::size_t ColumnsRemaining = WrapWidth - CurrentColumn;
 		const std::size_t ToWrite = std::min(
-			ColumnsRemaining, Length - Written
+			ColumnsRemaining, Buffer.size() - Written
 		);
 		if( ToWrite == 0)
 		{
@@ -46,7 +46,7 @@ std::size_t WrapWrite(
 		}
 		else
 		{
-			std::fwrite(Buffer + Written, 1, ToWrite, OutputFile);
+			std::fwrite(Buffer.data() + Written, 1, ToWrite, OutputFile);
 			CurrentColumn += ToWrite;
 			Written += ToWrite;
 		}
@@ -82,12 +82,11 @@ bool Encode( const Settings& Settings )
 		for(std::size_t i = 0; i < Padding; ++i) InputBuffer[CurRead + i] = 0u;
 		// Round up to nearest multiple of 4
 		CurRead += Padding;
-		Base85::Encode(InputBuffer.subspan(0, CurRead), OutputBuffer.data());
+		const auto OutputSpan = OutputBuffer.subspan(0,(CurRead / 4) * 5);
+		Base85::Encode(InputBuffer.subspan(0, CurRead), OutputSpan);
 		CurrentColumn = WrapWrite(
-			reinterpret_cast<const char*>(OutputBuffer.data()),
-			// Remove padding byte values from output
-			(CurRead / 4) * 5 - Padding,
-			Settings.Wrap, Settings.OutputFile, CurrentColumn
+			// Remove padding byte values from output,
+			OutputSpan, Settings.Wrap, Settings.OutputFile, CurrentColumn
 		);
 	}
 	if( std::ferror(Settings.InputFile) )
@@ -146,7 +145,7 @@ bool Decode( const Settings& Settings )
 		// Process any new groups of 5 ascii-bytes
 		Base85::Decode(
 			InputBuffer.subspan((EncodedBuffSize - ToRead) / 5, CurRead),
-			OutputBuffer.data()
+			OutputBuffer
 		);
 		if(
 			std::fwrite(OutputBuffer.data(), 1, (CurRead / 5) * 4 - Padding, Settings.OutputFile)
