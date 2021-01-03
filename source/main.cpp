@@ -25,7 +25,7 @@ struct Settings
 };
 
 std::size_t WrapWrite(
-	std::span<const std::uint8_t> Buffer, std::size_t WrapWidth,
+	std::span<const char8_t> Buffer, std::size_t WrapWidth,
 	std::FILE* OutputFile, std::size_t CurrentColumn = 0
 )
 {
@@ -57,16 +57,16 @@ std::size_t WrapWrite(
 bool Encode( const Settings& Settings )
 {
 	// Every 4 bytes input will map to 5 bytes of output
-	std::span<std::uint8_t> InputBuffer(
-		static_cast<std::uint8_t*>(
+	std::span<char8_t> InputBuffer(
+		static_cast<char8_t*>(
 		mmap(
 			0, DecodedBuffSize,
 			PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0
 		)
 		), DecodedBuffSize
 	);
-	std::span<std::uint8_t> OutputBuffer(
-		static_cast<std::uint8_t*>(
+	std::span<char8_t> OutputBuffer(
+		static_cast<char8_t*>(
 			mmap(
 				0, EncodedBuffSize,
 				PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0
@@ -101,16 +101,16 @@ bool Encode( const Settings& Settings )
 bool Decode( const Settings& Settings )
 {
 	// Every 5 bytes of input will map to 4 byte of output
-	std::span<std::uint8_t> InputBuffer(
-		static_cast<std::uint8_t*>(
+	std::span<char8_t> InputBuffer(
+		static_cast<char8_t*>(
 			mmap(
 				0, EncodedBuffSize,
 				PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0
 			)
 		), EncodedBuffSize
 	);
-	std::span<std::uint8_t> OutputBuffer(
-		static_cast<std::uint8_t*>(
+	std::span<char8_t> OutputBuffer(
+		static_cast<char8_t*>(
 			mmap(
 				0, DecodedBuffSize,
 				PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0
@@ -125,7 +125,7 @@ bool Decode( const Settings& Settings )
 	// conversions going on between calls to `read`
 	while(
 		(CurRead = std::fread(
-			reinterpret_cast<std::uint8_t*>(InputBuffer.data()) + (EncodedBuffSize - ToRead),
+			reinterpret_cast<char8_t*>(InputBuffer.data()) + (EncodedBuffSize - ToRead),
 			1, ToRead, Settings.InputFile
 		))
 	)
