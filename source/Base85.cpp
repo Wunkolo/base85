@@ -6,13 +6,13 @@
 //#else
 // Generic Implementation
 void Base85::Encode(
-	const std::uint8_t Input[], std::size_t Length, std::uint8_t Output[]
+	std::span<const std::uint8_t> Input, std::uint8_t Output[]
 )
 {
 	const std::uint32_t Pow85[5] = {
 		52200625ul, 614125ul, 7225ul, 85ul, 1ul
 	};
-	for( std::size_t i = 0; i < Length / 4; ++i )
+	for( std::size_t i = 0; i < Input.size() / 4; ++i )
 	{
 		const std::uint32_t InTuple = __builtin_bswap32(
 			*reinterpret_cast<const std::uint32_t*>(&Input[i * 4])
@@ -26,13 +26,13 @@ void Base85::Encode(
 }
 
 void Base85::Decode(
-	const std::uint8_t Input[], std::size_t Length, std::uint8_t Output[]
+	std::span<const std::uint8_t> Input, std::uint8_t Output[]
 )
 {
 	const std::uint32_t Pow85[5] = {
 		52200625ul, 614125ul, 7225ul, 85ul, 1ul
 	};
-	for( std::size_t i = 0; i < Length / 5; ++i )
+	for( std::size_t i = 0; i < Input.size() / 5; ++i )
 	{
 		std::uint32_t& OutTuple = *reinterpret_cast<std::uint32_t*>(&Output[i * 4]);
 		OutTuple = 0;
@@ -44,14 +44,14 @@ void Base85::Decode(
 	}
 }
 
-std::size_t Base85::Filter(std::uint8_t Bytes[], std::size_t Length)
+std::size_t Base85::Filter(std::span<std::uint8_t> Bytes)
 {
 	return  std::remove_if(
-		Bytes, Bytes + Length,
+		Bytes.data(), Bytes.data() + Bytes.size(),
 		[](const std::uint8_t& CurByte) -> bool
 		{
 			return ( CurByte < '!' || CurByte > 'u' );
 		}
-	) - Bytes;
+	) - Bytes.data();
 }
 //#endif

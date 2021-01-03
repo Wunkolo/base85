@@ -57,30 +57,34 @@ std::size_t WrapWrite(
 bool Encode( const Settings& Settings )
 {
 	// Every 4 bytes input will map to 5 bytes of output
-	std::uint8_t* InputBuffer = static_cast<std::uint8_t*>(
+	std::span<std::uint8_t> InputBuffer(
+		static_cast<std::uint8_t*>(
 		mmap(
 			0, DecodedBuffSize,
 			PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0
 		)
+		), DecodedBuffSize
 	);
-	std::uint8_t* OutputBuffer = static_cast<std::uint8_t*>(
-		mmap(
-			0, EncodedBuffSize,
-			PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0
-		)
+	std::span<std::uint8_t> OutputBuffer(
+		static_cast<std::uint8_t*>(
+			mmap(
+				0, EncodedBuffSize,
+				PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0
+			)
+		), EncodedBuffSize
 	);
 	std::size_t CurrentColumn = 0;
 	std::size_t CurRead = 0;
-	while( (CurRead = std::fread(InputBuffer, 1, DecodedBuffSize, Settings.InputFile)) )
+	while( (CurRead = std::fread(InputBuffer.data(), 1, DecodedBuffSize, Settings.InputFile)) )
 	{
 		const std::size_t Padding = (4u - CurRead % 4u) % 4u;
 		// Add padding 0x00 bytes
 		for(std::size_t i = 0; i < Padding; ++i) InputBuffer[CurRead + i] = 0u;
 		// Round up to nearest multiple of 4
 		CurRead += Padding;
-		Base85::Encode(InputBuffer, CurRead, OutputBuffer);
+		Base85::Encode(InputBuffer.subspan(0, CurRead), OutputBuffer.data());
 		CurrentColumn = WrapWrite(
-			reinterpret_cast<const char*>(OutputBuffer),
+			reinterpret_cast<const char*>(OutputBuffer.data()),
 			// Remove padding byte values from output
 			(CurRead / 4) * 5 - Padding,
 			Settings.Wrap, Settings.OutputFile, CurrentColumn
@@ -90,25 +94,29 @@ bool Encode( const Settings& Settings )
 	{
 		std::fputs("Error while reading input file",stderr);
 	}
-	munmap(InputBuffer,  DecodedBuffSize);
-	munmap(OutputBuffer, EncodedBuffSize);
+	munmap(InputBuffer.data(),  DecodedBuffSize);
+	munmap(OutputBuffer.data(), EncodedBuffSize);
 	return EXIT_SUCCESS;
 }
 
 bool Decode( const Settings& Settings )
 {
 	// Every 5 bytes of input will map to 4 byte of output
-	std::uint8_t* InputBuffer = static_cast<std::uint8_t*>(
-		mmap(
-			0, EncodedBuffSize,
-			PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0
-		)
+	std::span<std::uint8_t> InputBuffer(
+		static_cast<std::uint8_t*>(
+			mmap(
+				0, EncodedBuffSize,
+				PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0
+			)
+		), EncodedBuffSize
 	);
-	std::uint8_t* OutputBuffer = static_cast<std::uint8_t*>(
-		mmap(
-			0, DecodedBuffSize,
-			PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0
-		)
+	std::span<std::uint8_t> OutputBuffer(
+		static_cast<std::uint8_t*>(
+			mmap(
+				0, DecodedBuffSize,
+				PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0
+			)
+		), DecodedBuffSize
 	);
 
 	std::size_t ToRead = EncodedBuffSize;
@@ -118,7 +126,7 @@ bool Decode( const Settings& Settings )
 	// conversions going on between calls to `read`
 	while(
 		(CurRead = std::fread(
-			reinterpret_cast<std::uint8_t*>(InputBuffer) + (EncodedBuffSize - ToRead),
+			reinterpret_cast<std::uint8_t*>(InputBuffer.data()) + (EncodedBuffSize - ToRead),
 			1, ToRead, Settings.InputFile
 		))
 	)
@@ -127,8 +135,7 @@ bool Decode( const Settings& Settings )
 		if( Settings.IgnoreInvalid )
 		{
 			CurRead = Base85::Filter(
-				reinterpret_cast<std::uint8_t*>(InputBuffer) + (EncodedBuffSize - ToRead),
-				CurRead
+				InputBuffer.subspan(EncodedBuffSize - ToRead, CurRead)
 			);
 		}
 		const std::size_t Padding = (5u - CurRead % 5u) % 5u;
@@ -138,18 +145,17 @@ bool Decode( const Settings& Settings )
 		CurRead += Padding;
 		// Process any new groups of 5 ascii-bytes
 		Base85::Decode(
-			InputBuffer + (EncodedBuffSize - ToRead) / 5,
-			CurRead,
-			OutputBuffer
+			InputBuffer.subspan((EncodedBuffSize - ToRead) / 5, CurRead),
+			OutputBuffer.data()
 		);
 		if(
-			std::fwrite(OutputBuffer, 1, (CurRead / 5) * 4 - Padding, Settings.OutputFile)
+			std::fwrite(OutputBuffer.data(), 1, (CurRead / 5) * 4 - Padding, Settings.OutputFile)
 			!= (CurRead / 5) * 4 - Padding
 		)
 		{
 			std::fputs("Error writing to output file", stderr);
-			munmap(InputBuffer, EncodedBuffSize);
-			munmap(OutputBuffer, DecodedBuffSize);
+			munmap(InputBuffer.data(), EncodedBuffSize);
+			munmap(OutputBuffer.data(), DecodedBuffSize);
 			return EXIT_FAILURE;
 		}
 
@@ -160,8 +166,8 @@ bool Decode( const Settings& Settings )
 			ToRead = EncodedBuffSize;
 		}
 	}
-	munmap(InputBuffer, EncodedBuffSize);
-	munmap(OutputBuffer, DecodedBuffSize);
+	munmap(InputBuffer.data(), EncodedBuffSize);
+	munmap(OutputBuffer.data(), DecodedBuffSize);
 	if( std::ferror(Settings.InputFile) )
 	{
 		std::fputs("Error while reading input file",stderr);
@@ -226,14 +232,13 @@ int main( int argc, char* argv[] )
 	{
 		if( std::strcmp(argv[optind],"-") != 0 )
 		{
-			CurSettings.InputFile = fopen(argv[optind],"rb");
+			CurSettings.InputFile = std::fopen(argv[optind],"rb");
 			if( CurSettings.InputFile == nullptr )
 			{
 				std::fprintf(
 					stderr, "Error opening input file: %s\n", argv[optind]
 				);
 			}
-			return EXIT_FAILURE;
 		}
 	}
 	return (CurSettings.Decode ? Decode:Encode)(CurSettings);
