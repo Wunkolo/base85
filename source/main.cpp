@@ -31,6 +31,7 @@ std::size_t WrapWrite(
 {
 	if( WrapWidth == 0 )
 	{
+		// Width of 0 is just a plain output
 		return std::fwrite(Buffer.data(), 1, Buffer.size(), OutputFile);
 	}
 	for( std::size_t Written = 0; Written < Buffer.size(); )
@@ -39,7 +40,7 @@ std::size_t WrapWrite(
 		const std::size_t ToWrite = std::min(
 			ColumnsRemaining, Buffer.size() - Written
 		);
-		if( ToWrite == 0)
+		if( ToWrite == 0 )
 		{
 			std::fputc('\n',OutputFile);
 			CurrentColumn = 0;
@@ -57,13 +58,13 @@ std::size_t WrapWrite(
 bool Encode( const Settings& Settings )
 {
 	// Every 4 bytes input will map to 5 bytes of output
-	std::span<char8_t> InputBuffer(
-		static_cast<char8_t*>(
+	std::span<std::uint32_t> InputBuffer(
+		static_cast<std::uint32_t*>(
 		mmap(
 			0, DecodedBuffSize,
 			PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0
 		)
-		), DecodedBuffSize
+		), DecodedBuffSize / 4
 	);
 	std::span<char8_t> OutputBuffer(
 		static_cast<char8_t*>(
@@ -78,12 +79,15 @@ bool Encode( const Settings& Settings )
 	while( (CurRead = std::fread(InputBuffer.data(), 1, DecodedBuffSize, Settings.InputFile)) )
 	{
 		const std::size_t Padding = (4u - CurRead % 4u) % 4u;
-		// Add padding 0x00 bytes
-		for(std::size_t i = 0; i < Padding; ++i) InputBuffer[CurRead + i] = 0u;
+		const std::uint32_t PaddingMask = 0xFFFFFFFFu >> Padding;
+		// Add padding 0x00 bytes to last element, if needed
+		if( Padding ) InputBuffer[CurRead / 4] &= PaddingMask;
 		// Round up to nearest multiple of 4
 		CurRead += Padding;
-		const auto OutputSpan = OutputBuffer.subspan(0,(CurRead / 4) * 5);
-		Base85::Encode(InputBuffer.subspan(0, CurRead), OutputSpan);
+		// Every four bytes matches up to up to 5 bytes, so prepare for at
+		// at-least the worst case output size
+		const auto InputSpan = InputBuffer.first(CurRead / 4);
+		const auto OutputSpan = Base85::Encode(InputSpan, OutputBuffer);
 		CurrentColumn = WrapWrite(
 			// Remove padding byte values from output,
 			OutputSpan, Settings.Wrap, Settings.OutputFile, CurrentColumn

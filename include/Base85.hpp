@@ -6,8 +6,9 @@
 namespace Base85
 {
 
-void Encode(
-	std::span<const char8_t> Input, std::span<char8_t> Output
+// Returns the span of output bytes actually used
+std::span<char8_t> Encode(
+	const std::span<const std::uint32_t> Input, const std::span<char8_t> Output
 );
 
 void Decode(
