@@ -87,7 +87,10 @@ bool Encode( const Settings& Settings )
 		// Every four bytes matches up to up to 5 bytes, so prepare for at
 		// at-least the worst case output size
 		const auto InputSpan = InputBuffer.first(CurRead / 4);
-		const auto OutputSpan = Base85::Encode(InputSpan, OutputBuffer);
+		auto OutputSpan = Base85::Encode(InputSpan, OutputBuffer);
+		// Because we added padding, we must remove it from the output.
+		if( Padding ) OutputSpan = OutputSpan.first(OutputSpan.size() - Padding);
+
 		CurrentColumn = WrapWrite(
 			// Remove padding byte values from output,
 			OutputSpan, Settings.Wrap, Settings.OutputFile, CurrentColumn
