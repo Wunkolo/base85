@@ -73,10 +73,7 @@ elseif( CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang" )
 	)
 endif()
 
-### Tests
-enable_testing()
-
-# Benchmarks
+### base85
 add_executable(
 	base85
 	source/Base85.cpp
@@ -87,3 +84,28 @@ target_include_directories(
 	PRIVATE
 	include
 )
+
+### Tests
+enable_testing()
+
+find_package(Catch2 REQUIRED)
+add_library(catch ALIAS Catch2::Catch2)
+
+add_executable(
+	base85_test
+	tests/main.cpp
+	tests/base85.cpp
+	source/Base85.cpp
+)
+target_include_directories(
+	base85_test
+	PRIVATE
+	include
+)
+target_link_libraries(
+	base85_test
+	PRIVATE
+	catch
+)
+
+add_test(CRC32_test CRC32_test)
