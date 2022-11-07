@@ -2,24 +2,22 @@
 #include <algorithm>
 #include <cassert>
 
-//#if defined(__x86_64__) || defined(_M_X64)
-//#include "Base85-x86.hpp"
-//#else
-// Generic Implementation
+// #if defined(__x86_64__) || defined(_M_X64)
+// #include "Base85-x86.hpp"
+// #else
+//  Generic Implementation
 
-constexpr std::array<std::uint32_t, 5> Pow85 = {{
-	52200625ul, 614125ul, 7225ul, 85ul, 1ul
-}};
+constexpr std::array<std::uint32_t, 5> Pow85
+	= {{52200625ul, 614125ul, 7225ul, 85ul, 1ul}};
 
 std::span<char8_t> Base85::Encode(
-	const std::span<const std::uint32_t> Input, const std::span<char8_t> Output
-)
+	const std::span<const std::uint32_t> Input, const std::span<char8_t> Output)
 {
-	//assert( (Input.size() * 5) >= Output.size() );
+	// assert( (Input.size() * 5) >= Output.size() );
 	std::size_t OutputCount = 0;
 	for( std::uint32_t InTuple : Input )
 	{
-		InTuple = __builtin_bswap32(InTuple);
+		InTuple             = __builtin_bswap32(InTuple);
 		const auto OutTuple = Output.subspan(OutputCount, 5);
 		if( InTuple == 0u )
 		{
@@ -39,14 +37,13 @@ std::span<char8_t> Base85::Encode(
 	return Output.first(OutputCount);
 }
 
-void Base85::Decode(
-	std::span<const char8_t> Input, std::span<char8_t> Output
-)
+void Base85::Decode(std::span<const char8_t> Input, std::span<char8_t> Output)
 {
 	for( std::size_t i = 0; i < Input.size() / 5; ++i )
 	{
-		const auto InTuple = Input.subspan(i * 5, 5);
-		std::uint32_t& OutTuple = *reinterpret_cast<std::uint32_t*>(&Output[i * 4]);
+		const auto     InTuple = Input.subspan(i * 5, 5);
+		std::uint32_t& OutTuple
+			= *reinterpret_cast<std::uint32_t*>(&Output[i * 4]);
 		OutTuple = 0;
 		for( std::size_t j = 0; j < 5; ++j )
 		{
@@ -56,14 +53,14 @@ void Base85::Decode(
 	}
 }
 
-std::size_t Base85::Filter( std::span<char8_t> Bytes )
+std::size_t Base85::Filter(std::span<char8_t> Bytes)
 {
-	return  std::remove_if(
-		Bytes.data(), Bytes.data() + Bytes.size(),
-		[](const char8_t& CurByte) -> bool
-		{
-			return ( CurByte < u8'!' || CurByte > u8'u' || CurByte != u8'z');
-		}
-	) - Bytes.data();
+	return std::remove_if(
+			   Bytes.data(), Bytes.data() + Bytes.size(),
+			   [](const char8_t& CurByte) -> bool {
+				   return (
+					   CurByte < u8'!' || CurByte > u8'u' || CurByte != u8'z');
+			   })
+		 - Bytes.data();
 }
-//#endif
+// #endif

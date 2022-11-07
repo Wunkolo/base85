@@ -6,7 +6,8 @@
 TEST_CASE("Test", "[Base85]")
 {
 	const std::u8string Input(4, '\0');
-	std::u8string       Output;
+
+	std::u8string Output;
 	Output.resize((Input.size() / 4) * 5);
 
 	const auto OutputSpan = Base85::Encode(

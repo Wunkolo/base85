@@ -1,12 +1,12 @@
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <algorithm>
+#include <getopt.h>
 #include <sys/mman.h>
 #include <unistd.h>
-#include <getopt.h>
 
 #include <Base85.hpp>
 
@@ -17,17 +17,16 @@ const static std::size_t EncodedBuffSize = (DecodedBuffSize / 4) * 5;
 
 struct Settings
 {
-	std::FILE* InputFile  = stdin;
-	std::FILE* OutputFile = stdout;
-	bool Decode           = false;
-	bool IgnoreInvalid    = false;
-	std::size_t Wrap      = 76;
+	std::FILE*  InputFile     = stdin;
+	std::FILE*  OutputFile    = stdout;
+	bool        Decode        = false;
+	bool        IgnoreInvalid = false;
+	std::size_t Wrap          = 76;
 };
 
 std::size_t WrapWrite(
 	std::span<const char8_t> Buffer, std::size_t WrapWidth,
-	std::FILE* OutputFile, std::size_t CurrentColumn = 0
-)
+	std::FILE* OutputFile, std::size_t CurrentColumn = 0)
 {
 	if( WrapWidth == 0 )
 	{
@@ -37,12 +36,11 @@ std::size_t WrapWrite(
 	for( std::size_t Written = 0; Written < Buffer.size(); )
 	{
 		const std::size_t ColumnsRemaining = WrapWidth - CurrentColumn;
-		const std::size_t ToWrite = std::min(
-			ColumnsRemaining, Buffer.size() - Written
-		);
+		const std::size_t ToWrite
+			= std::min(ColumnsRemaining, Buffer.size() - Written);
 		if( ToWrite == 0 )
 		{
-			std::fputc('\n',OutputFile);
+			std::fputc('\n', OutputFile);
 			CurrentColumn = 0;
 		}
 		else
@@ -55,109 +53,98 @@ std::size_t WrapWrite(
 	return CurrentColumn;
 }
 
-bool Encode( const Settings& Settings )
+bool Encode(const Settings& Settings)
 {
 	// Every 4 bytes input will map to 5 bytes of output
 	std::span<std::uint32_t> InputBuffer(
-		static_cast<std::uint32_t*>(
-		mmap(
-			0, DecodedBuffSize,
-			PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0
-		)
-		), DecodedBuffSize / 4
-	);
+		static_cast<std::uint32_t*>(mmap(
+			0, DecodedBuffSize, PROT_READ | PROT_WRITE,
+			MAP_PRIVATE | MAP_ANONYMOUS, -1, 0)),
+		DecodedBuffSize / 4);
 	std::span<char8_t> OutputBuffer(
-		static_cast<char8_t*>(
-			mmap(
-				0, EncodedBuffSize,
-				PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0
-			)
-		), EncodedBuffSize
-	);
+		static_cast<char8_t*>(mmap(
+			0, EncodedBuffSize, PROT_READ | PROT_WRITE,
+			MAP_PRIVATE | MAP_ANONYMOUS, -1, 0)),
+		EncodedBuffSize);
 	std::size_t CurrentColumn = 0;
-	std::size_t CurRead = 0;
-	while( (CurRead = std::fread(InputBuffer.data(), 1, DecodedBuffSize, Settings.InputFile)) )
+	std::size_t CurRead       = 0;
+	while(
+		(CurRead = std::fread(
+			 InputBuffer.data(), 1, DecodedBuffSize, Settings.InputFile)) )
 	{
-		const std::size_t Padding = (4u - CurRead % 4u) % 4u;
+		const std::size_t   Padding     = (4u - CurRead % 4u) % 4u;
 		const std::uint32_t PaddingMask = 0xFFFFFFFFu >> Padding;
 		// Add padding 0x00 bytes to last element, if needed
-		if( Padding ) InputBuffer[CurRead / 4] &= PaddingMask;
+		if( Padding )
+			InputBuffer[CurRead / 4] &= PaddingMask;
 		// Round up to nearest multiple of 4
 		CurRead += Padding;
 		// Every four bytes matches up to up to 5 bytes, so prepare for at
 		// at-least the worst case output size
-		const auto InputSpan = InputBuffer.first(CurRead / 4);
-		auto OutputSpan = Base85::Encode(InputSpan, OutputBuffer);
+		const auto InputSpan  = InputBuffer.first(CurRead / 4);
+		auto       OutputSpan = Base85::Encode(InputSpan, OutputBuffer);
 		// Because we added padding, we must remove it from the output.
-		if( Padding ) OutputSpan = OutputSpan.first(OutputSpan.size() - Padding);
+		if( Padding )
+			OutputSpan = OutputSpan.first(OutputSpan.size() - Padding);
 
 		CurrentColumn = WrapWrite(
 			// Remove padding byte values from output,
-			OutputSpan, Settings.Wrap, Settings.OutputFile, CurrentColumn
-		);
+			OutputSpan, Settings.Wrap, Settings.OutputFile, CurrentColumn);
 	}
 	if( std::ferror(Settings.InputFile) )
 	{
-		std::fputs("Error while reading input file",stderr);
+		std::fputs("Error while reading input file", stderr);
 	}
-	munmap(InputBuffer.data(),  DecodedBuffSize);
+	munmap(InputBuffer.data(), DecodedBuffSize);
 	munmap(OutputBuffer.data(), EncodedBuffSize);
 	return EXIT_SUCCESS;
 }
 
-bool Decode( const Settings& Settings )
+bool Decode(const Settings& Settings)
 {
 	// Every 5 bytes of input will map to 4 byte of output
 	std::span<char8_t> InputBuffer(
-		static_cast<char8_t*>(
-			mmap(
-				0, EncodedBuffSize,
-				PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0
-			)
-		), EncodedBuffSize
-	);
+		static_cast<char8_t*>(mmap(
+			0, EncodedBuffSize, PROT_READ | PROT_WRITE,
+			MAP_PRIVATE | MAP_ANONYMOUS, -1, 0)),
+		EncodedBuffSize);
 	std::span<char8_t> OutputBuffer(
-		static_cast<char8_t*>(
-			mmap(
-				0, DecodedBuffSize,
-				PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0
-			)
-		), DecodedBuffSize
-	);
+		static_cast<char8_t*>(mmap(
+			0, DecodedBuffSize, PROT_READ | PROT_WRITE,
+			MAP_PRIVATE | MAP_ANONYMOUS, -1, 0)),
+		DecodedBuffSize);
 
 	std::size_t ToRead = EncodedBuffSize;
 	// Number of bytes available for actual processing
 	std::size_t CurRead = 0;
-	// Process paged-sized batches of input in an attempt to have bulk-amounts of
-	// conversions going on between calls to `read`
+	// Process paged-sized batches of input in an attempt to have bulk-amounts
+	// of conversions going on between calls to `read`
 	while(
 		(CurRead = std::fread(
-			reinterpret_cast<char8_t*>(InputBuffer.data()) + (EncodedBuffSize - ToRead),
-			1, ToRead, Settings.InputFile
-		))
-	)
+			 reinterpret_cast<char8_t*>(InputBuffer.data())
+				 + (EncodedBuffSize - ToRead),
+			 1, ToRead, Settings.InputFile)) )
 	{
 		// Filter input of all garbage bytes
 		if( Settings.IgnoreInvalid )
 		{
 			CurRead = Base85::Filter(
-				InputBuffer.subspan(EncodedBuffSize - ToRead, CurRead)
-			);
+				InputBuffer.subspan(EncodedBuffSize - ToRead, CurRead));
 		}
 		const std::size_t Padding = (5u - CurRead % 5u) % 5u;
 		// Add padding 0x00 bytes
-		for(std::size_t i = 0; i < Padding; ++i) InputBuffer[CurRead + i] = 'u';
+		for( std::size_t i = 0; i < Padding; ++i )
+			InputBuffer[CurRead + i] = 'u';
 		// Round up to nearest multiple of 4
 		CurRead += Padding;
 		// Process any new groups of 5 ascii-bytes
 		Base85::Decode(
 			InputBuffer.subspan((EncodedBuffSize - ToRead) / 5, CurRead),
-			OutputBuffer
-		);
-		if(
-			std::fwrite(OutputBuffer.data(), 1, (CurRead / 5) * 4 - Padding, Settings.OutputFile)
-			!= (CurRead / 5) * 4 - Padding
-		)
+			OutputBuffer);
+		if( std::fwrite(
+				OutputBuffer.data(), 1, (CurRead / 5) * 4 - Padding,
+				Settings.OutputFile)
+			!= (CurRead / 5) * 4 - Padding )
 		{
 			std::fputs("Error writing to output file", stderr);
 			munmap(InputBuffer.data(), EncodedBuffSize);
@@ -166,7 +153,7 @@ bool Decode( const Settings& Settings )
 		}
 
 		// Set up for next read
-		ToRead -= CurRead; 
+		ToRead -= CurRead;
 		if( ToRead == 0 )
 		{
 			ToRead = EncodedBuffSize;
@@ -176,42 +163,47 @@ bool Decode( const Settings& Settings )
 	munmap(OutputBuffer.data(), DecodedBuffSize);
 	if( std::ferror(Settings.InputFile) )
 	{
-		std::fputs("Error while reading input file",stderr);
+		std::fputs("Error while reading input file", stderr);
 		return EXIT_FAILURE;
 	}
 	return EXIT_SUCCESS;
 }
 
-const char* Usage = 
-"base85 - Wunkolo <wunkolo@gmail.com>\n"
-"Usage: base85 [Options]... [File]\n"
-"       base85 --decode [Options]... [File]\n"
-"Options:\n"
-"  -h, --help            Display this help/usage information\n"
-"  -d, --decode          Decodes incoming base85 into binary bytes\n"
-"  -i, --ignore-garbage  When decoding, ignores non-base85 characters\n"
-"  -w, --wrap=Columns    Wrap encoded base85 output within columns\n"
-"                        Default is `76`. `0` Disables linewrapping\n";
+const char* Usage
+	= "base85 - Wunkolo <wunkolo@gmail.com>\n"
+	  "Usage: base85 [Options]... [File]\n"
+	  "       base85 --decode [Options]... [File]\n"
+	  "Options:\n"
+	  "  -h, --help            Display this help/usage information\n"
+	  "  -d, --decode          Decodes incoming base85 into binary bytes\n"
+	  "  -i, --ignore-garbage  When decoding, ignores non-base85 characters\n"
+	  "  -w, --wrap=Columns    Wrap encoded base85 output within columns\n"
+	  "                        Default is `76`. `0` Disables linewrapping\n";
 
-const static struct option CommandOptions[5] = {
-	{ "decode",         optional_argument, nullptr,  'd' },
-	{ "ignore-garbage", optional_argument, nullptr,  'i' },
-	{ "wrap",           optional_argument, nullptr,  'w' },
-	{ "help",           optional_argument, nullptr,  'h' },
-	{ nullptr,                no_argument, nullptr, '\0' }
-};
+const static struct option CommandOptions[5]
+	= {{"decode", optional_argument, nullptr, 'd'},
+	   {"ignore-garbage", optional_argument, nullptr, 'i'},
+	   {"wrap", optional_argument, nullptr, 'w'},
+	   {"help", optional_argument, nullptr, 'h'},
+	   {nullptr, no_argument, nullptr, '\0'}};
 
-int main( int argc, char* argv[] )
+int main(int argc, char* argv[])
 {
 	Settings CurSettings = {};
-	int Opt;
-	int OptionIndex;
-	while( (Opt = getopt_long(argc, argv, "hdiw:", CommandOptions, &OptionIndex )) != -1 )
+	int      Opt;
+	int      OptionIndex;
+	while(
+		(Opt = getopt_long(argc, argv, "hdiw:", CommandOptions, &OptionIndex))
+		!= -1 )
 	{
 		switch( Opt )
 		{
-		case 'd': CurSettings.Decode = true;            break;
-		case 'i': CurSettings.IgnoreInvalid = true;     break;
+		case 'd':
+			CurSettings.Decode = true;
+			break;
+		case 'i':
+			CurSettings.IgnoreInvalid = true;
+			break;
 		case 'w':
 		{
 			const std::intmax_t ArgWrap = std::atoi(optarg);
@@ -236,16 +228,15 @@ int main( int argc, char* argv[] )
 	}
 	if( optind < argc )
 	{
-		if( std::strcmp(argv[optind],"-") != 0 )
+		if( std::strcmp(argv[optind], "-") != 0 )
 		{
-			CurSettings.InputFile = std::fopen(argv[optind],"rb");
+			CurSettings.InputFile = std::fopen(argv[optind], "rb");
 			if( CurSettings.InputFile == nullptr )
 			{
 				std::fprintf(
-					stderr, "Error opening input file: %s\n", argv[optind]
-				);
+					stderr, "Error opening input file: %s\n", argv[optind]);
 			}
 		}
 	}
-	return (CurSettings.Decode ? Decode:Encode)(CurSettings);
+	return (CurSettings.Decode ? Decode : Encode)(CurSettings);
 }
