@@ -38,6 +38,36 @@ static std::u8string TestEncode(std::u8string Input)
 	return Output;
 }
 
+// A singular '0x00' will cause three padding-bytes to be added to complete the
+// four-byte tuple. But it should _not_ be encoded into a singular 'z'
+// character. Rather it should just turn into a singular '!' value.
+TEST_CASE("Zero x1", "[Base85]")
+{
+	const std::u8string Input(1, '\0');
+
+	const std::u8string Match = u8"!";
+
+	REQUIRE(TestEncode(Input) == Match);
+}
+
+TEST_CASE("Zero x2", "[Base85]")
+{
+	const std::u8string Input(2, '\0');
+
+	const std::u8string Match = u8"!!";
+
+	REQUIRE(TestEncode(Input) == Match);
+}
+
+TEST_CASE("Zero x3", "[Base85]")
+{
+	const std::u8string Input(3, '\0');
+
+	const std::u8string Match = u8"!!!";
+
+	REQUIRE(TestEncode(Input) == Match);
+}
+
 // Special-case of four zero-bytes resulting in a single 'z' character
 TEST_CASE("Zero-Tuple", "[Base85]")
 {
