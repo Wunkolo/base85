@@ -24,7 +24,7 @@ struct Settings
 	std::size_t Wrap          = 76;
 };
 
-std::size_t WrapWrite(
+static std::size_t WrapWrite(
 	std::span<const char8_t> Buffer, std::size_t WrapWidth,
 	std::FILE* OutputFile, std::size_t CurrentColumn = 0)
 {
@@ -53,7 +53,7 @@ std::size_t WrapWrite(
 	return CurrentColumn;
 }
 
-bool Encode(const Settings& Settings)
+static bool Encode(const Settings& Settings)
 {
 	// Every 4 bytes input will map to 5 bytes of output
 	std::span<std::uint32_t> InputBuffer(
@@ -100,7 +100,7 @@ bool Encode(const Settings& Settings)
 	return EXIT_SUCCESS;
 }
 
-bool Decode(const Settings& Settings)
+static bool Decode(const Settings& Settings)
 {
 	// Every 5 bytes of input will map to 4 byte of output
 	std::span<char8_t> InputBuffer(
