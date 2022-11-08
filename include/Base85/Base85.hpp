@@ -7,7 +7,7 @@ namespace Base85
 {
 
 // Returns the span of output bytes actually used
-std::span<char8_t> Encode(
+std::span<char8_t> EncodeTuples(
 	const std::span<const std::uint32_t> Input,
 	const std::span<char8_t>             Output);
 

@@ -8,7 +8,7 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-#include <Base85.hpp>
+#include <Base85/Base85.hpp>
 
 // Virtual page size of the current system, rounded to nearest multiple of 4
 const static std::size_t DecodedBuffSize = (sysconf(_SC_PAGE_SIZE) / 4) * 4;
@@ -82,7 +82,7 @@ static bool Encode(const Settings& Settings)
 		// Every four bytes matches up to up to 5 bytes, so prepare for at
 		// at-least the worst case output size
 		const auto InputSpan  = InputBuffer.first(CurRead / 4);
-		auto       OutputSpan = Base85::Encode(InputSpan, OutputBuffer);
+		auto       OutputSpan = Base85::EncodeTuples(InputSpan, OutputBuffer);
 		// Because we added padding, we must remove it from the output.
 		if( Padding )
 			OutputSpan = OutputSpan.first(OutputSpan.size() - Padding);

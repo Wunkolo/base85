@@ -1,8 +1,9 @@
-#include "Base85.hpp"
+#include <Base85/Base85.hpp>
+
 #include <algorithm>
+#include <string>
 
 #include <catch2/catch.hpp>
-#include <string>
 
 namespace Catch
 {
@@ -26,7 +27,7 @@ static std::u8string TestEncode(std::u8string Input)
 	std::u8string Output;
 	Output.resize(((Input.size() / 4)) * 5);
 
-	const auto OutputSpan = Base85::Encode(
+	const auto OutputSpan = Base85::EncodeTuples(
 		std::span(
 			reinterpret_cast<const std::uint32_t*>(Input.data()),
 			Input.size() / 4),

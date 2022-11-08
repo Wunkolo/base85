@@ -1,4 +1,5 @@
-#include <Base85.hpp>
+#include <Base85/Base85.hpp>
+
 #include <algorithm>
 #include <cassert>
 
@@ -10,7 +11,7 @@
 constexpr std::array<std::uint32_t, 5> Pow85
 	= {{52200625ul, 614125ul, 7225ul, 85ul, 1ul}};
 
-std::span<char8_t> Base85::Encode(
+std::span<char8_t> Base85::EncodeTuples(
 	const std::span<const std::uint32_t> Input, const std::span<char8_t> Output)
 {
 	// assert( (Input.size() * 5) >= Output.size() );
