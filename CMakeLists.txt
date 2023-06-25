@@ -109,12 +109,11 @@ target_link_libraries(
 ### Tests
 enable_testing()
 
-find_package(Catch2 REQUIRED)
+find_package(Catch2 3 REQUIRED)
 add_library(catch ALIAS Catch2::Catch2)
 
 add_executable(
 	base85-test
-	tests/main.cpp
 	tests/base85-enc.cpp
 )
 target_include_directories(
@@ -126,7 +125,7 @@ target_link_libraries(
 	base85-test
 	PRIVATE
 	base85
-	catch
+	Catch2::Catch2WithMain
 )
 
 add_test(base85-test base85-test)
